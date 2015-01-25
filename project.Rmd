@@ -1,0 +1,57 @@
+---
+title: "Practical machine learning"
+output:
+  html_document: default
+---
+
+
+## Synopsis
+
+The goal of this project is to predict the manner in which people did the 
+barebell lifts using data from accelerometers on the belt, forearm, arm, and 
+dumbell of 6 participants. 
+
+
+## Data preprocessing
+```{r}
+download.file(
+    "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",
+    destfile = "data/pml-training.csv", method = "curl")
+
+download.file(
+    "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",
+    destfile = "data/pml-testing.csv", method = "curl")
+
+raw_train <- read.csv("data/pml-training.csv", 
+                      na.strings= c("NA",""," ", "#DIV/0!"))
+raw_test <- read.csv("data/pml-testing.csv", 
+                     na.strings = c("NA", "", " ", "#DIV/0!"))
+```
+
+Remove columns with NA values and split raw_train on train and cross validation data sets
+```{r}
+library(caret)
+
+NAcnt <- apply(raw_train, 2, function(x) {sum(is.na(x))} )  
+is_train <- createDataPartition(y = raw_train$classe, p=0.7, list = FALSE)
+ds_train <- raw_train[is_train, NAcnt == 0]
+ds_cv <- raw_train[-is_train, NAcnt == 0]
+ds_test <- raw_test[, NAcnt == 0]
+```
+
+## Train model
+
+Train random forest model with custom train control function
+
+```{r}
+   trctr <- trainControl(method = "cv", number = 4)
+   mdl <- train(classe ~ ., data = ds_train, method = "rf", trControl = trctr)
+```
+
+## Prediction
+
+```{r}
+ds_prdct <- predict(mdl, ds_cv)
+smpl_err <- sum(ds_cv$classe == ds_prdct)/nrow(ds_cv)
+```
+Sample error is `r smpl_err`.
